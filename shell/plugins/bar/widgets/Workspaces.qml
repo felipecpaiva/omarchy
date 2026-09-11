@@ -18,7 +18,27 @@ BarWidget {
   // get at it), and the ProxiedWindow behind Window.window exposes no screen. Its
   // position does match the monitor it sits on, though, and that is enough.
   // Monitor x/y are logical while width/height are physical, hence the scale.
+  // Workspaces move between monitors without Hyprland.workspaces.values or
+  // Hyprland.monitors.values changing identity, so a model built from them has
+  // nothing to re-evaluate on and keeps drawing the old split. Bump a counter on
+  // the events that actually move things, and depend on it.
+  property int refreshTick: 0
+
+  Connections {
+    target: Hyprland
+    function onRawEvent(event) {
+      if (!event || !event.name) return
+      var name = String(event.name).replace(/v2$/, "")
+      if (name === "moveworkspace" || name === "workspace" || name === "focusedmon"
+        || name === "createworkspace" || name === "destroyworkspace"
+        || name === "monitoradded" || name === "monitorremoved") {
+        root.refreshTick++
+      }
+    }
+  }
+
   readonly property var hyprMonitor: {
+    root.refreshTick
     var window = root.Window ? root.Window.window : null
     if (!window) return null
 
@@ -48,10 +68,13 @@ BarWidget {
   }
 
   function onThisMonitor(workspace) {
-    // No monitor resolved (one screen, or the window is not up yet) means there
-    // is nothing to divide, so everything counts as ours.
+    // Not knowing our own monitor means there is nothing to divide (one screen,
+    // or the window is not up yet), so everything counts as ours.
     if (root.monitorName === "") return true
-    if (!workspace || !workspace.monitor || !workspace.monitor.name) return true
+    // Knowing ours but not the workspace's is the moment an output is being torn
+    // down or brought up. Claiming it here is how the other screen's desktops
+    // briefly leak onto this bar, so stay out of it until Hyprland says.
+    if (!workspace || !workspace.monitor || !workspace.monitor.name) return false
     return String(workspace.monitor.name) === root.monitorName
   }
 
@@ -66,6 +89,7 @@ BarWidget {
   }
 
   function workspaceIds() {
+    root.refreshTick
     var ids = []
     var elsewhere = ({})
     var values = Hyprland.workspaces.values
