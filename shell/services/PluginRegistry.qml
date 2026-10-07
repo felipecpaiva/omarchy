@@ -440,12 +440,12 @@ QtObject {
 
   // The bar pins its center row on centerAnchor by exact id, so a widget
   // swapped for its clone (or back) has to carry the anchor with it.
-  // The anchor follows only when the swap took its widget out of the center:
-  // a widget listed in another section too is swapped there first, and the
-  // center entry the anchor names is still in place.
+  // The anchor follows only when the swap took its widget out of the center
+  // and put the replacement there: a swap in another section leaves it alone.
   function moveCenterAnchor(config, fromId, toId) {
     if (Util.canonicalWidgetId(String(config.bar.centerAnchor || "")) !== fromId) return
     if (findBarLocation(config, fromId, "center").found) return
+    if (!findBarLocation(config, toId, "center").found) return
     config.bar.centerAnchor = toId
   }
 
@@ -537,6 +537,7 @@ QtObject {
         removeDisabled(config, key)
         var entry = { id: key }
         var insertedWithPlacement = false
+        var swappedForSource = false
         if (!location.found && isBarWidget) {
           var sourceLocation = clonedFrom ? findEntryLocation(config, clonedFrom) : { found: false }
           if (sourceLocation.kind === "bar") {
@@ -544,7 +545,7 @@ QtObject {
             var replacement = Util.isPlainObject(sourceEntry) ? Util.cloneJson(sourceEntry) : entry
             replacement.id = key
             config.bar.layout[sourceLocation.section][sourceLocation.index] = replacement
-            moveCenterAnchor(config, clonedFrom, key)
+            swappedForSource = true
           } else {
             var section = defaultBarWidgetSection(manifest)
             var target = barTarget(config, placement || {}, section)
@@ -557,6 +558,7 @@ QtObject {
 
         if (isBarWidget && !insertedWithPlacement && placement && Object.keys(placement).length)
           moveBarEntry(config, key, placement)
+        if (swappedForSource) moveCenterAnchor(config, clonedFrom, key)
 
         if (clonedFrom && hasNonWidgetKind && !isDisabled(config, clonedFrom)) {
           addDisabled(config, clonedFrom)

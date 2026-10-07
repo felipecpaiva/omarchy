@@ -396,6 +396,21 @@ ShellRoot {
 
     root.config = {
       version: 1,
+      bar: { centerAnchor: "omarchy.first-widget", layout: { left: [{ id: "omarchy.first-widget" }], center: [], right: [] } },
+      plugins: []
+    }
+    registry.setEnabled("local.first-widget", true)
+    root.assertEqual(root.config.bar.centerAnchor, "omarchy.first-widget", "a clone swapped in only outside the center does not take the center anchor")
+    root.config = {
+      version: 1,
+      bar: { centerAnchor: "local.first-widget", layout: { left: [{ id: "local.first-widget" }], center: [], right: [] } },
+      plugins: []
+    }
+    registry.setEnabled("local.first-widget", false)
+    root.assertEqual(root.config.bar.centerAnchor, "local.first-widget", "a clone restored only outside the center does not move the center anchor")
+
+    root.config = {
+      version: 1,
       bar: { layout: { left: [{ id: "omarchy.hybrid" }], center: [], right: [] } },
       plugins: []
     }
